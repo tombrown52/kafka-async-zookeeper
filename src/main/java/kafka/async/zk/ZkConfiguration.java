@@ -218,16 +218,18 @@ public class ZkConfiguration implements ClientConfiguration {
 		}
 	}
 
+	Pattern hostPortPattern = Pattern.compile(".*:([^:]+):([0-9]+)$");
+	
 	public void updateBrokerData(String brokerId, byte[] data) {
 		synchronized (lock) {
-			Pattern p = Pattern.compile(".*:([0-9]+\\.[0-9]+\\.[0-9]+\\.[0-9]+):([0-9]+)$");
-			Matcher m = p.matcher(new String(data));
+			Matcher m = hostPortPattern.matcher(new String(data));
 			if (m.matches()) {
 				String host = m.group(1);
 				int port = Integer.parseInt(m.group(2));
 				KafkaBrokerIdentity brokerIdentity = new KafkaBrokerIdentity(host, port);
 				updateBrokerAndPartitions(brokerId, brokerIdentity, knownPartitions.get(brokerId));
 			} else {
+				logger.warn("Unable to parse broker identification: " + new String(data));
 				updateBrokerAndPartitions(brokerId, null, knownPartitions.get(brokerId));
 			}
 		}
