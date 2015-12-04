@@ -5,7 +5,7 @@
 
   <groupId>com.dishdigital.kafka</groupId>
   <artifactId>kafka-async-zookeeper</artifactId>
-  <version>0.4</version>
+  <version>0.5</version>
   <packaging>jar</packaging>
 
   <name>${project.artifactId}</name>
