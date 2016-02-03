@@ -90,13 +90,14 @@ public class Test {
 		Logger.getRootLogger().addAppender(console);
 		Logger.getLogger("org").setLevel(Level.INFO);
 		Logger.getLogger(ZkConfiguration.class).setLevel(Level.TRACE);
-		CuratorFramework zk = getCurator("devanalytics007.af1.movenetworks.com/kafka");
+		CuratorFramework zk = getCurator("mgr001.analytics.dev.movetv.com/kafka");
 		zk.start();
 
 		MyBrokerPool brokers = new MyBrokerPool();
 		
 		ZkConfiguration config = new ZkConfiguration();
-		config.attach(zk, "", "parsed");
+		config.attach(zk, "");
+		config.attachToTopic("foobar",false);
 		config.addBrokerPool(brokers);
 		
 		while (true) {

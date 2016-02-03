@@ -1,9 +1,8 @@
 package kafka.async.zk;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.assertFalse;
-
+import static org.junit.Assert.assertTrue;
 
 import java.nio.charset.Charset;
 import java.util.Arrays;
@@ -11,9 +10,6 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-
-import kafka.async.KafkaBrokerIdentity;
-import kafka.async.KafkaPartitionIdentity;
 
 import org.easymock.EasyMock;
 import org.junit.Test;
@@ -26,70 +22,148 @@ import com.netflix.curator.framework.api.GetDataBuilder;
 import com.netflix.curator.framework.api.Pathable;
 import com.netflix.curator.framework.listen.Listenable;
 
+import kafka.async.KafkaBrokerIdentity;
+import kafka.async.KafkaPartitionIdentity;
+
 public class TestZkConfiguration {
 
 	public final static Charset ASCII = Charset.forName("ASCII");
 
-	private String mytopic = "mytopic";
+	private String TOPIC_AAA = "topic_aaa";
+	private String TOPIC_BBB = "topic_bbb";
 	
 	final String HOST1 = "127.0.0.1";
 	final int PORT1 = 1234;
 	final byte[] DATA1 = ("asdf:"+HOST1+":"+PORT1).getBytes(ASCII);
 	final KafkaBrokerIdentity BROKER1 = new KafkaBrokerIdentity(HOST1,PORT1);
 	final String ID1 = "1";
-	final KafkaPartitionIdentity PART1_0 = new KafkaPartitionIdentity(BROKER1,mytopic.getBytes(ASCII),0);
-	final KafkaPartitionIdentity PART1_1 = new KafkaPartitionIdentity(BROKER1,mytopic.getBytes(ASCII),1);
-	final KafkaPartitionIdentity PART1_2 = new KafkaPartitionIdentity(BROKER1,mytopic.getBytes(ASCII),2);
-	final KafkaPartitionIdentity PART1_3 = new KafkaPartitionIdentity(BROKER1,mytopic.getBytes(ASCII),3);
 
+	final HashSet<String> EMPTY_SET = new HashSet<String>();
+	
+	final KafkaPartitionIdentity PART1_AAA_0 = new KafkaPartitionIdentity(BROKER1,TOPIC_AAA.getBytes(ASCII),0);
+	final KafkaPartitionIdentity PART1_AAA_1 = new KafkaPartitionIdentity(BROKER1,TOPIC_AAA.getBytes(ASCII),1);
+	final KafkaPartitionIdentity PART1_AAA_2 = new KafkaPartitionIdentity(BROKER1,TOPIC_AAA.getBytes(ASCII),2);
+	final KafkaPartitionIdentity PART1_AAA_3 = new KafkaPartitionIdentity(BROKER1,TOPIC_AAA.getBytes(ASCII),3);
+
+	final KafkaPartitionIdentity PART1_BBB_0 = new KafkaPartitionIdentity(BROKER1,TOPIC_BBB.getBytes(ASCII),0);
+	final KafkaPartitionIdentity PART1_BBB_1 = new KafkaPartitionIdentity(BROKER1,TOPIC_BBB.getBytes(ASCII),1);
+	final KafkaPartitionIdentity PART1_BBB_2 = new KafkaPartitionIdentity(BROKER1,TOPIC_BBB.getBytes(ASCII),2);
 	
 	@Test
 	public void testNormalOrderAdd() throws Exception {
 		CuratorFramework curator = createMockCurator();
 		ZkConfiguration config = new ZkConfiguration();
-		config.attach(curator, "", mytopic);
+		config.attach(curator, "");
+		config.attachToTopic(TOPIC_AAA, true);
 		
 		config.updateOnlineBrokers(curator, toSet( ID1 ));
 		assertFalse(config.getPartitionManager().changed());
 		
 		config.updateBrokerData(ID1, DATA1);
 		assertTrue(config.getPartitionManager().changed());
-		assertEquals(toSet(PART1_0),config.getPartitionManager().all());
+		assertEquals(toSet(PART1_AAA_0),config.getPartitionManager().all());
 		
-		config.updateTopicBrokers(curator, new HashSet<String>( Arrays.asList(new String[] { ID1 } )));
+		config.updateTopicBrokers(curator, TOPIC_AAA, toSet( ID1 ));
 		assertFalse(config.getPartitionManager().changed());
-		assertEquals(toSet(PART1_0),config.getPartitionManager().all());
+		assertEquals(toSet(PART1_AAA_0),config.getPartitionManager().all());
 		
-		config.updateTopicData(ID1, "4".getBytes(ASCII));
+		config.updateTopicData(ID1, TOPIC_AAA, "4".getBytes(ASCII));
 		assertTrue(config.getPartitionManager().changed());
-		assertEquals(toSet(PART1_0,PART1_1,PART1_2,PART1_3),config.getPartitionManager().all());
+		assertEquals(toSet(PART1_AAA_0,PART1_AAA_1,PART1_AAA_2,PART1_AAA_3),config.getPartitionManager().all());
 
 		config.updateOnlineBrokers(curator, new HashSet<String>());
 		assertTrue(config.getPartitionManager().changed());
 		assertTrue(config.getPartitionManager().all().isEmpty());
 		
 		config.updateOnlineBrokers(curator, toSet( ID1 ));
-		assertFalse(config.getPartitionManager().changed());
-
 		config.updateBrokerData(ID1, DATA1);
 		assertTrue(config.getPartitionManager().changed());
-		assertEquals(toSet(PART1_0,PART1_1,PART1_2,PART1_3),config.getPartitionManager().all());
+		assertEquals(toSet(PART1_AAA_0,PART1_AAA_1,PART1_AAA_2,PART1_AAA_3),config.getPartitionManager().all());
 	}
 	
 	@Test
 	public void weirdOrderAdd() throws Exception {
 		CuratorFramework curator = createMockCurator();
 		ZkConfiguration config = new ZkConfiguration();
-		config.attach(curator, "", mytopic);
+		config.attach(curator, "");
+		config.attachToTopic(TOPIC_AAA, true);
 
-		config.updateTopicBrokers(curator, toSet( ID1 ));
-		config.updateTopicData( ID1, "4".getBytes(ASCII));
+		config.updateTopicBrokers(curator, TOPIC_AAA, toSet( ID1 ));
+		config.updateTopicData( ID1, TOPIC_AAA, "4".getBytes(ASCII));
 		assertFalse(config.getPartitionManager().changed());
 		assertTrue(config.getPartitionManager().all().isEmpty());
 		
 		config.updateBrokerData( ID1, DATA1 );
-//		assertFalse(config.getPartitionManager().changed());
+		assertTrue(config.getPartitionManager().changed());
+		assertEquals(toSet(PART1_AAA_0,PART1_AAA_1,PART1_AAA_2,PART1_AAA_3),config.getPartitionManager().all());
 		
+	}
+
+	@Test
+	public void multipleTopics() throws Exception {
+		CuratorFramework curator = createMockCurator();
+		ZkConfiguration config = new ZkConfiguration();
+		config.attach(curator, "");
+		
+		config.attachToTopic(TOPIC_AAA, false);
+		config.attachToTopic(TOPIC_BBB, false);
+
+		config.updateTopicBrokers(curator, TOPIC_AAA, toSet( ID1 ));
+		config.updateTopicBrokers(curator, TOPIC_BBB, toSet( ID1 ));
+		config.updateTopicData( ID1, TOPIC_AAA, "4".getBytes(ASCII));
+		config.updateTopicData( ID1, TOPIC_BBB, "3".getBytes(ASCII));
+		assertFalse(config.getPartitionManager().changed());
+		assertTrue(config.getPartitionManager().all().isEmpty());
+		
+		config.updateBrokerData( ID1, DATA1 );
+		assertTrue(config.getPartitionManager().changed());
+		assertEquals(toSet(PART1_AAA_0,PART1_AAA_1,PART1_AAA_2,PART1_AAA_3,PART1_BBB_0,PART1_BBB_1,PART1_BBB_2),config.getPartitionManager().all());
+
+		config.updateTopicBrokers(curator, TOPIC_AAA, EMPTY_SET );
+		assertTrue(config.getPartitionManager().changed());
+		assertEquals(toSet(PART1_BBB_0,PART1_BBB_1,PART1_BBB_2),config.getPartitionManager().all());
+
+		config.updateTopicBrokers(curator, TOPIC_AAA, toSet( ID1 ));
+		config.updateTopicData( ID1, TOPIC_AAA, "4".getBytes(ASCII));
+		assertTrue(config.getPartitionManager().changed());
+		assertEquals(toSet(PART1_AAA_0,PART1_AAA_1,PART1_AAA_2,PART1_AAA_3,PART1_BBB_0,PART1_BBB_1,PART1_BBB_2),config.getPartitionManager().all());
+
+		config.detachTopic(TOPIC_BBB);
+		assertTrue(config.getPartitionManager().changed());
+		assertEquals(toSet(PART1_AAA_0,PART1_AAA_1,PART1_AAA_2,PART1_AAA_3),config.getPartitionManager().all());
+	}
+	
+	@Test
+	public void testCreateNewTopic() throws Exception {
+		CuratorFramework curator = createMockCurator();
+		ZkConfiguration config = new ZkConfiguration();
+		config.attach(curator, "");
+		
+		config.attachToTopic(TOPIC_AAA, true);
+		config.updateTopicBrokers(curator, TOPIC_AAA, EMPTY_SET);
+		config.updateOnlineBrokers(curator, toSet( ID1 ) );
+		config.updateBrokerData(ID1, DATA1);
+		
+		assertTrue(config.getPartitionManager().changed());
+		assertEquals(toSet(PART1_AAA_0),config.getPartitionManager().all());
+	}
+	
+	@Test
+	public void testReadOnlyTopic() throws Exception {
+		CuratorFramework curator = createMockCurator();
+		ZkConfiguration config = new ZkConfiguration();
+		config.attach(curator, "");
+		
+		config.attachToTopic(TOPIC_AAA, false);
+		config.updateTopicBrokers(curator, TOPIC_AAA, EMPTY_SET);
+		config.updateOnlineBrokers(curator, toSet( ID1 ) );
+		config.updateBrokerData(ID1, DATA1);
+		
+		// Added a broker that isn't hosting our topic.
+		// Since we're not creating the topic on the broker,
+		// we should expect no partitions to be created.
+		assertFalse(config.getPartitionManager().changed());
+		assertEquals(EMPTY_SET, config.getPartitionManager().all());
 	}
 	
 	public <T> Set<T> toSet(T... items) {
